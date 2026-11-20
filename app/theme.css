@@ -1,0 +1,12 @@
+/* Generated from tokens.json by `npm run design:tokens`; edit tokens.json, not this file.
+   The only file in web/src allowed to contain color literals. */
+
+:root {
+  color-scheme: light;
+  --bg: #ffffff;
+  --surface: #f5f6f8;
+  --text: #111418;
+  --muted: #555b66;
+  --border: #d0d5dd;
+  --accent: #2356d5;
+}

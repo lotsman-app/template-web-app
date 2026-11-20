@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=https://lotsman-panel.vercel.app/schemas/lotsman.v1.json
+version: 1
+product_type: web_app
+runtime: node@22
+commands:
+  install: npm ci
+  verify: [npm run typecheck, npm run build, npm test]
+  quick: [npm test]
+deploy:
+  provider: vercel
+  preview: automatic
+health:
+  url: /api/health
+rollback: provider
+visual:
+  start: npm run build && npm run start
+  ready_url: /
+  pages:
+    - { name: home, path: / }
+  ui_paths: ['app/**']
+  design_tokens: app/tokens.json
