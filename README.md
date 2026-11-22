@@ -17,12 +17,22 @@ pipeline to build on.
 - `tests/` — the smoke test of the health route (`npm test`).
 - `lotsman.yaml` — the project contract: the install and verify commands, the deploy provider and
   the health path.
-- `lotsman.policy.json` — the policy of the project; it holds its version only.
+- `lotsman.policy.json` — the policy of the project; it holds the migration rules: a destructive migration asks the owner, an additive one only notifies.
+- `supabase/migrations/` — the database migrations, applied to production by
+  `.github/workflows/supabase-migrations.yml`.
 - `CLAUDE.md` — the rules for agents that work in the project.
 - `.github/workflows/ci.yml` — install, typecheck, build and smoke test on every pull request.
 
 `lotsman.yaml` and `lotsman.policy.json` point to the schemas that Lotsman publishes, so an editor
 checks them as you type. No copy of a schema lives here.
+
+## Database migrations
+
+Migrations live in `supabase/migrations/`. A push to `main` that changes that folder runs the
+`supabase-migrations.yml` workflow, which applies the pending ones with `supabase db push` against
+the `SUPABASE_DB_URL` Actions secret. A migration whose leading comment lines carry
+`-- lotsman: after-deploy` waits, with every migration after it, until the workflow is run by hand
+with `after_deploy` set.
 
 ## Commands
 

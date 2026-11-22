@@ -28,6 +28,14 @@ file fully before changing anything.
 - `vercel.json` fixes the function region to `fra1`. It holds no environment variable and no secret.
 - Prefer the standard library and the existing dependencies.
 
+## Database migrations
+
+Migrations live in `supabase/migrations/` and are applied to production by the
+`supabase-migrations.yml` workflow after a push to `main`. Add a new migration instead of editing
+an existing one, and keep it additive: a destructive migration (a drop, a truncate or a rename) is
+decided by the owner. Mark a migration that must wait until the new code is live with the comment
+line `-- lotsman: after-deploy` at its top.
+
 ## Style
 
 The style of the app lives in `app/tokens.json`: its colours, fonts, sizes and radii, and whether the

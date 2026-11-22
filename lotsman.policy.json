@@ -1,4 +1,48 @@
 {
   "$schema": "https://lotsman-panel.vercel.app/schemas/policy.v1.json",
-  "version": 1
+  "version": 1,
+  "stopList": {
+    "migrationPaths": ["supabase/migrations/**"],
+    "dependencyManifests": [],
+    "dependencyFields": ["dependencies"],
+    "authAndSecretPaths": [],
+    "guardrailConfigPaths": []
+  },
+  "tiers": {
+    "notify": {
+      "additiveMigrationPaths": ["supabase/migrations/**"],
+      "nameOnlyEnvPaths": []
+    }
+  },
+  "sql": {
+    "governedTables": ["schema_migrations"],
+    "governedFunctionNamePatterns": ["^pg_.*"],
+    "allowedStatements": [
+      "create_table",
+      "add_column",
+      "create_index",
+      "create_type",
+      "add_enum_value",
+      "create_function",
+      "enable_rls_own_table",
+      "create_policy_own_table",
+      "revoke_from_public_anon",
+      "grant_authenticated_service_role_own_objects",
+      "revoke_own_objects",
+      "add_constraint_own_table",
+      "replace_constraint",
+      "insert_seed_own_table"
+    ],
+    "forbiddenKeywords": [
+      "disable trigger",
+      "session_replication_role",
+      "set role",
+      "owner to",
+      "alter role",
+      "drop",
+      "truncate",
+      "rename"
+    ],
+    "grantRoles": ["authenticated", "service_role"]
+  }
 }

@@ -1,0 +1,102 @@
+name: Supabase migrations
+
+# Applies the pending migrations of `supabase/migrations` to the production database. It runs when
+# a push to main changes the migrations folder or this workflow (so adding it to an existing
+# repository applies what is pending), or by hand from the Actions tab. It never runs on pull
+# requests. A migration whose leading comment lines carry `-- lotsman: after-deploy` is held with
+# every migration ordered after it, unless the manual run sets after_deploy: those wait until the
+# code that needs them is live.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+      - '.github/workflows/supabase-migrations.yml'
+  workflow_dispatch:
+    inputs:
+      after_deploy:
+        description: 'Also apply the migrations marked "-- lotsman: after-deploy" (run once the code is live)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# A later push waits for the running job; two runs never apply migrations in parallel.
+concurrency:
+  group: supabase-migrations
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Supabase migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # The only place the credential is read; the steps use it as a "$SUPABASE_DB_URL" expansion
+    # only and never print it. It is the Session pooler connection string of the database (port
+    # 5432, password percent-encoded; runners have no IPv6, so not the direct db.<ref> host).
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: supabase/setup-cli@45a513f8c64c0bc8e0e3dfe572b5c95be85f6359 # v3.0.1
+        with:
+          version: 2.121.0
+      - name: Check the database secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_DB_URL:-}" ]; then
+            echo "::error::The repository secret SUPABASE_DB_URL is not set"
+            exit 1
+          fi
+      # Outside after-deploy mode the pending list is cut at the first pending migration whose
+      # leading comment lines carry the marker: that one and every pending migration after it are
+      # held. A held file is moved out of the checkout, so db push never sees it and still applies
+      # only unapplied migrations in file order.
+      - name: Hold the after-deploy migrations
+        shell: bash
+        env:
+          AFTER_DEPLOY: ${{ inputs.after_deploy && 'true' || 'false' }}
+        run: |
+          set -euo pipefail
+          if ! out="$(supabase db push --dry-run --db-url "$SUPABASE_DB_URL" 2>&1)"; then
+            printf '%s\n' "$out"
+            exit 1
+          fi
+          printf '%s\n' "$out"
+          pending="$(printf '%s\n' "$out" | grep -oE '[0-9]{14}_[^[:space:]]*\.sql' | cut -c1-14 | tr '\n' ' ' | sed 's/ *$//' || true)"
+          # Only comment and blank lines before the first statement count for the marker.
+          is_marked() {
+            awk '
+              /^[[:space:]]*$/ { next }
+              /^[[:space:]]*--/ { if ($0 ~ /^[[:space:]]*--[[:space:]]*lotsman:[[:space:]]*after-deploy[[:space:]]*$/) found = 1; next }
+              { exit }
+              END { exit !found }
+            ' "$1"
+          }
+          held_names=""
+          holding=false
+          for v in $pending; do
+            if [ "$AFTER_DEPLOY" != "true" ] && [ "$holding" = false ]; then
+              for f in supabase/migrations/"$v"_*.sql; do
+                if [ -f "$f" ] && is_marked "$f"; then holding=true; fi
+              done
+            fi
+            if [ "$holding" = true ]; then
+              mkdir -p "$RUNNER_TEMP/held-migrations"
+              for f in supabase/migrations/"$v"_*.sql; do
+                held_names="${held_names:+$held_names, }$(basename "$f")"
+                mv "$f" "$RUNNER_TEMP/held-migrations/"
+              done
+            fi
+          done
+          if [ -n "$held_names" ]; then
+            echo "::notice::Held until after the deploy: $held_names"
+          fi
+      # No flag that applies out-of-order migrations: only unapplied ones, in file order.
+      - name: Apply migrations
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase db push --db-url "$SUPABASE_DB_URL" --yes

@@ -12,6 +12,15 @@ deploy:
 health:
   url: /api/health
 rollback: provider
+database:
+  provider: supabase
+  migrations: supabase/migrations
+  apply_workflow: supabase-migrations.yml
+  after_deploy_input: after_deploy
+  deliver:
+    - { value: url, to: vercel, name: NEXT_PUBLIC_SUPABASE_URL }
+    - { value: public_key, to: vercel, name: NEXT_PUBLIC_SUPABASE_ANON_KEY }
+    - { value: db_url, to: github_secret, name: SUPABASE_DB_URL }
 visual:
   start: npm run build && npm run start
   ready_url: /
