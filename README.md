@@ -26,6 +26,14 @@ pipeline to build on.
 `lotsman.yaml` and `lotsman.policy.json` point to the schemas that Lotsman publishes, so an editor
 checks them as you type. No copy of a schema lives here.
 
+## Checks that must not block a merge
+
+Lotsman merges in batches and judges the batch commit on `lotsman/batch-**` by every check CI
+reports there, unless `lotsman.yaml` lists the checks that count in `merge_train.checks`. A check that
+must not block a merge, for example an advisory scan, is kept non-red in CI itself: do not run it on
+`lotsman/batch-**`, or set `continue-on-error: true` on its step so a failure there leaves the job
+green. A red check that is neither listed nor kept non-red blocks the batch.
+
 ## Database migrations
 
 Migrations live in `supabase/migrations/`. A push to `main` that changes that folder runs the
